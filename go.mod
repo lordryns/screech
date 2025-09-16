@@ -10,6 +10,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.10.1 // indirect
 	github.com/charmbracelet/x/cellbuf v0.0.13-0.20250311204145-2c3ea96c31dd // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
+	github.com/dhowden/tag v0.0.0-20240417053706-3d75831295e8 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
 	github.com/gdamore/tcell/v2 v2.8.1 // indirect
@@ -21,7 +22,6 @@ require (
 	github.com/muesli/cancelreader v0.2.2 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
-	github.com/qeesung/image2ascii v1.0.1 // indirect
 	github.com/rivo/tview v0.42.1-0.20250904205922-4cdaaa9bd6f6 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/wayneashleyberry/terminal-dimensions v1.1.0 // indirect
