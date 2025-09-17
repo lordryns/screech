@@ -1,12 +1,11 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"image"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"screech/cli"
+	"screech/helper"
 	"screech/scanner"
 	"strings"
 
@@ -21,6 +20,8 @@ type Song struct {
 	state string
 	tempImage string 
 	tempImgBytes []byte
+	lyrics string
+	artist string
 }
 func main() {
 	var currentSong Song
@@ -34,13 +35,11 @@ func main() {
 									SetTextAlign(tview.AlignCenter).
 									SetScrollable(true)
 
-	var bodyImage = tview.NewImage()
 
 	var bodyList = tview.NewList()
 
 	var body = tview.NewFlex().SetDirection(tview.FlexRow)
-	body.AddItem(bodyTitle, 3, 0, false) 
-	body.AddItem(bodyImage, 0, 1, false)
+	body.AddItem(bodyTitle, 7, 0, false) 
 	body.AddItem(bodyList, 0, 2, true)
 
 
@@ -50,7 +49,7 @@ func main() {
 								SetTextAlign(tview.AlignCenter)
 
 	var layout = tview.NewFlex().SetDirection(tview.FlexRow)
-	layout.AddItem(header, 3, 0, false)
+	layout.AddItem(header, 4, 0, false)
 	layout.AddItem(body, 0, 3, true)
 	layout.AddItem(footer, 2, 0, false)
 
@@ -58,8 +57,9 @@ func main() {
 
 	app.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
 		switch event.Key() {
-		case tcell.KeyCtrlC: 
-			exec.Command("termux-media-player", "stop").Run()
+		case tcell.KeyCtrlC:
+			cli.StopAudio()
+			cli.RemoveNowPlayingNotification()
 		if (len(currentSong.tempImage) > 0) {
 				cleanTempFile(&currentSong)
 			}
@@ -70,7 +70,7 @@ func main() {
 			case tcell.KeyRune:
 				switch event.Rune() {
 					case 'o':
-						ShowMusicMenu(app, bodyTitle, bodyList, &currentSong, bodyImage)
+						ShowMusicMenu(app, bodyTitle, bodyList, &currentSong)
 					case 'u':
 						PauseSong(bodyTitle, &currentSong)
 					case 's':
@@ -89,32 +89,31 @@ func main() {
 	}
 }
 
-func OpenSong(title *tview.TextView, imageWidget *tview.Image, song *Song, app *tview.Application) {
+
+
+func OpenSong(title *tview.TextView, song *Song, app *tview.Application) {
 	if (len(song.tempImage) > 0) {
 		cleanTempFile(song)
 	}
 
 	getMetadataFromFile(song)
-	img, _, err := image.Decode(bytes.NewReader(song.tempImgBytes))
-	if err == nil {
-	app.QueueUpdateDraw(func() {
-	imageWidget.SetImage(img)
-})
-	}
-	
-	var formattedString = fmt.Sprintf("%s\n state: playing", song.title)
+
+		
+	var formattedString = fmt.Sprintf("Song: %s\nArtist: %s\nstate: playing", song.title, song.artist)
 
 	title.SetText(formattedString)
-	exec.Command("termux-media-player", "play", song.path).Run()
+	go cli.PlayAudio(song.path)
+	go cli.NowPlayingNotification(song.title, song.tempImage)
 }
 
 func PlaySong(title *tview.TextView, song *Song) {
 	if (len(song.title) > 0) {
-		var formattedString = fmt.Sprintf("%s\n state: playing", song.title)
+
+
+	var formattedString = fmt.Sprintf("Song: %s\nArtist: %s\nstate: playing", song.title, song.artist)
 
 			title.SetText(formattedString)
-			exec.Command("termux-media-player", "play").Run()
-
+			cli.ResumeAudio()
 	} else {
 		title.SetText("No song is currently open!")
 	}
@@ -123,24 +122,30 @@ func PlaySong(title *tview.TextView, song *Song) {
 
 
 func PauseSong(title *tview.TextView, song *Song) {
-	var formattedString = fmt.Sprintf("%s\n state: paused", song.title)
 
+	var formattedString = fmt.Sprintf("Song: %s\nArtist: %s\nstate: paused", song.title, song.artist)
 	title.SetText(formattedString)
-	exec.Command("termux-media-player", "pause").Run()
+	cli.PauseAudio()
 }
 
 
 func StopSong(title *tview.TextView, song *Song) {
-	var formattedString = fmt.Sprintf("%s\n state: stopped", song.title)
 
+	var formattedString = "Use [o] to select a song!"
 	title.SetText(formattedString)
-	exec.Command("termux-media-player", "stop").Run()
+	cli.StopAudio()
+	song.artist = ""
+	song.title = ""
+	song.state = "off" 
+
+	cli.RemoveNowPlayingNotification()
+	cleanTempFile(song)
 }
 
 
 
 
-func ShowMusicMenu(app *tview.Application, title *tview.TextView, list *tview.List, song *Song, imgWidget *tview.Image) {
+func ShowMusicMenu(app *tview.Application, title *tview.TextView, list *tview.List, song *Song) {
 	var loadMusic = scanner.LoadMusic(scanner.CONFIG_PATH)
 	
 		title.SetText("Select song: ")
@@ -153,7 +158,7 @@ func ShowMusicMenu(app *tview.Application, title *tview.TextView, list *tview.Li
 				list.Clear()
 				song.title = relative
 				song.path = path
-				OpenSong(title, imgWidget, song, app)
+				OpenSong(title, song, app)
 			})
 		}
 	}
@@ -194,16 +199,31 @@ func getMetadataFromFile(song *Song) {
 		return
 	}
 
-	var tempImageBytes = metadata.Picture().Data
-	var tempImagePath = filepath.Join(scanner.FindHomePath(), "." + strings.TrimSpace(metadata.Title()) + "." + mimeToExt(metadata.Picture().MIMEType))
-	song.tempImage = tempImagePath
-	song.tempImgBytes = tempImageBytes
+	var pic = metadata.Picture()
+	if pic != nil {
+		var tempImageBytes = pic.Data
+		var trimTitle = strings.ReplaceAll(song.title, " ", "")
+		trimTitle = strings.ReplaceAll(trimTitle, "\uFEFF", "")
+			var tempImagePath = filepath.Join(scanner.FindHomePath(), "." + trimTitle + "." + mimeToExt(pic.MIMEType))
 
-	err3 := os.WriteFile(tempImagePath, tempImageBytes, os.ModePerm)
-	if err3 != nil {
-		return
+			if mimeToExt(pic.MIMEType) == "jpg" {
+				var newPath =  filepath.Join(scanner.FindHomePath(), "." + strings.TrimSpace(metadata.Title()) + "." + "png")
+				if err := helper.ConvertJpgToPng(tempImageBytes, newPath); err == nil {
+					tempImagePath = newPath
+				}
+			}
+
+			song.lyrics = metadata.Lyrics()
+			song.tempImage = tempImagePath
+			song.tempImgBytes = tempImageBytes
+			song.artist = metadata.Artist()
+
+			// err3 := os.WriteFile(tempImagePath, tempImageBytes, os.ModePerm)
+			// if err3 != nil {
+				// return
+			// }
+
 	}
-
 }
 
 func cleanTempFile(song *Song) {
