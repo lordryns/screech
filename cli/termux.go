@@ -41,7 +41,7 @@ func NowPlayingNotification(songName string, coverPath string) {
     cmd.CombinedOutput()
 }
 	func RemoveNowPlayingNotification () {
-		exec.Command("termux-notification-remove", "1").Run()
+		exec.Command("termux-notification-remove", "now_playing").Run()
 	}
 
 
