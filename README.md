@@ -6,7 +6,7 @@ DISCLAIMER: Screech is still in its alpha build and is still unstable, so please
 
 ## Installation 
 
-Screech is designed to be extremly easy to setup, only takes a few steps 
+Screech is designed to be extremely easy to setup, only takes a few steps 
 
 *Note*: Screech requires Termux:Api in order to work because it makes use of a number of apis.
 
