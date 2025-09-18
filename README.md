@@ -41,4 +41,4 @@ On your first launch, Screech will try to scan your device for music, this is a 
 
 
 ## Other stuff 
-This is just the initial build and so it might be unstable and is lacking features, anyway to contact me outside of github try @lordryns on [X](https://x.com/lordryns) and [Discord](https://discord.com/users/1015382973052358657)
+This is just the initial build and so it might be unstable and is lacking features. Anyway, to contact me outside of Github, try @lordryns on [X](https://x.com/lordryns) and [Discord](https://discord.com/users/1015382973052358657)
